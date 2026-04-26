@@ -1,87 +1,76 @@
 from flask import Flask, render_template, request, jsonify
-import sqlite3
-import os
+import requests
+import json
 
 app = Flask(__name__)
 
-# This function ensures the database and table exist every time you start
-def init_db():
-    conn = sqlite3.connect('school.db')
-    cursor = conn.cursor()
-    # We use the table name 'Students' to match your SQLite Viewer
-    cursor.execute('''
-        CREATE TABLE IF NOT EXISTS Students (
-            RollNo INTEGER PRIMARY KEY, 
-            FullName TEXT NOT NULL, 
-            Class TEXT NOT NULL, 
-            BirthDate TEXT NOT NULL, 
-            Address TEXT NOT NULL, 
-            EnrollDate TEXT NOT NULL
-        )
-    ''')
-    conn.commit()
-    conn.close()
-
-def get_db_connection():
-    # Connects to the local file named school.db
-    conn = sqlite3.connect('school.db')
-    conn.row_factory = sqlite3.Row
-    return conn
+# --- CONFIGURATION ---
+JPDB_TOKEN = "90935260|-31949237328396187|90958499"
+DB_NAME = "SCHOOL-DB"
+REL_NAME = "STUDENT-TABLE"
+JPDB_BASE_URL = "http://api.login2xlore.com:5577"
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-# Step 2: Check if the Roll No exists
-@app.route('/check/<int:roll_no>')
-def check_student(roll_no):
+@app.route('/check-roll', methods=['POST'])
+def check_roll():
+    roll_no = request.json.get('roll_no')
+    
+    # Logic to check if Roll No exists in JsonPowerDB
+    query = {
+        "token": JPDB_TOKEN,
+        "cmd": "GET_BY_KEY",
+        "dbName": DB_NAME,
+        "rel": REL_NAME,
+        "jsonStr": json.dumps({"Roll-No": roll_no})
+    }
+    
     try:
-        conn = get_db_connection()
-        student = conn.execute('SELECT * FROM Students WHERE RollNo = ?', (roll_no,)).fetchone()
-        conn.close()
+        response = requests.post(f"{JPDB_BASE_URL}/api/irl", json=query)
+        res_data = response.json()
         
-        if student:
-            # If found, return the data as JSON
-            return jsonify({
-                "exists": True, 
-                "data": dict(student)
-            })
+        # If status is 200, the record exists
+        if res_data.get("status") == 200:
+            record = json.loads(res_data.get("data")).get("record")
+            return jsonify({"exists": True, "data": record})
         return jsonify({"exists": False})
     except Exception as e:
-        print(f"Database Error: {e}")
         return jsonify({"error": str(e)}), 500
 
-# Step 3: Handle Save and Update buttons
-@app.route('/submit', methods=['POST'])
-def submit():
-    try:
-        data = request.json
-        conn = get_db_connection()
-        
-        # Check if Roll No is already in the database
-        existing = conn.execute('SELECT 1 FROM Students WHERE RollNo = ?', (data['RollNo'],)).fetchone()
-        
-        if existing:
-            # UPDATE logic
-            conn.execute('''
-                UPDATE Students 
-                SET FullName=?, Class=?, BirthDate=?, Address=?, EnrollDate=? 
-                WHERE RollNo=?''',
-                (data['FullName'], data['Class'], data['BirthDate'], data['Address'], data['EnrollDate'], data['RollNo']))
-        else:
-            # INSERT logic
-            conn.execute('''
-                INSERT INTO Students (RollNo, FullName, Class, BirthDate, Address, EnrollDate) 
-                VALUES (?, ?, ?, ?, ?, ?)''',
-                (data['RollNo'], data['FullName'], data['Class'], data['BirthDate'], data['Address'], data['EnrollDate']))
-        
-        conn.commit()
-        conn.close()
-        return jsonify({"status": "success"})
-    except Exception as e:
-        print(f"Submit Error: {e}")
-        return jsonify({"error": str(e)}), 500
+@app.route('/save-student', methods=['POST'])
+def save_student():
+    student_data = request.json
+    
+    # Logic to save new record
+    put_request = {
+        "token": JPDB_TOKEN,
+        "cmd": "PUT",
+        "dbName": DB_NAME,
+        "rel": REL_NAME,
+        "jsonStr": json.dumps(student_data)
+    }
+    
+    response = requests.post(f"{JPDB_BASE_URL}/api/iml", json=put_request)
+    return jsonify(response.json())
+
+@app.route('/update-student', methods=['POST'])
+def update_student():
+    student_data = request.json
+    roll_no = student_data.get("Roll-No")
+    
+    # Logic to update existing record based on Roll-No
+    update_request = {
+        "token": JPDB_TOKEN,
+        "cmd": "UPDATE",
+        "dbName": DB_NAME,
+        "rel": REL_NAME,
+        "jsonStr": json.dumps({roll_no: student_data})
+    }
+    
+    response = requests.post(f"{JPDB_BASE_URL}/api/iml", json=update_request)
+    return jsonify(response.json())
 
 if __name__ == '__main__':
-    init_db()  # This builds the table automatically
     app.run(debug=True)
