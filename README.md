@@ -1,2 +1,1 @@
-# School-Enrollment-System
-A full-stack Student Enrollment System using Python Flask and SQLite. The app features dynamic form logic: it checks the Roll No in real-time, auto-fills data for existing students, and unlocks fields for new entries. It ensures data integrity with built-in validation and provides a seamless Save, Update, and Reset workflow.
+This is a full-stack web application designed to manage student enrollment data efficiently. It utilizes a Python Flask backend and integrates with JsonPowerDB, a high-performance, real-time NoSQL cloud database. The application features a dynamic UI that enforces business logic by enabling/disabling form fields based on the existence of a primary key (Roll No).
