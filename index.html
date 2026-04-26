@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Student Enrollment</title>
+    <style>
+        body { font-family: sans-serif; margin: 40px; line-height: 1.6; }
+        .form-group { margin-bottom: 15px; }
+        label { display: inline-block; width: 120px; }
+        input, textarea { padding: 5px; width: 250px; }
+        .buttons { margin-top: 20px; }
+    </style>
+</head>
+<body onload="resetForm()">
+
+    <h2>Student Enrollment Form</h2>
+    <form id="studentForm">
+        <div class="form-group">
+            <label>Roll No:</label>
+            <input type="number" id="RollNo" onblur="checkRollNo()">
+        </div>
+        <div class="form-group">
+            <label>Full Name:</label>
+            <input type="text" id="FullName" disabled>
+        </div>
+        <div class="form-group">
+            <label>Class:</label>
+            <input type="text" id="Class" disabled>
+        </div>
+        <div class="form-group">
+            <label>Birth Date:</label>
+            <input type="date" id="BirthDate" disabled>
+        </div>
+        <div class="form-group">
+            <label>Address:</label>
+            <textarea id="Address" disabled></textarea>
+        </div>
+        <div class="form-group">
+            <label>Enroll Date:</label>
+            <input type="date" id="EnrollDate" disabled>
+        </div>
+
+        <div class="buttons">
+            <button type="button" id="btnSave" onclick="sendData()" disabled>Save</button>
+            <button type="button" id="btnUpdate" onclick="sendData()" disabled>Update</button>
+            <button type="button" id="btnReset" onclick="resetForm()">Reset</button>
+        </div>
+    </form>
+
+    <script>
+        // STEP 1: On Page Load / Reset
+        function resetForm() {
+            document.getElementById("studentForm").reset();
+            const fields = ["FullName", "Class", "BirthDate", "Address", "EnrollDate"];
+            fields.forEach(f => document.getElementById(f).disabled = true);
+            
+            document.getElementById("RollNo").disabled = false;
+            document.getElementById("btnSave").disabled = true;
+            document.getElementById("btnUpdate").disabled = true;
+            document.getElementById("RollNo").focus();
+        }
+
+        // STEP 2: Check if Roll No exists in Database
+        function checkRollNo() {
+            let rollNo = document.getElementById("RollNo").value;
+            if (!rollNo) return;
+
+            fetch('/check/' + rollNo)
+            .then(res => res.json())
+            .then(response => {
+                const fields = ["FullName", "Class", "BirthDate", "Address", "EnrollDate"];
+                fields.forEach(f => document.getElementById(f).disabled = false);
+
+                if (response.exists) {
+                    // Record exists: Fill data and enable UPDATE
+                    const data = response.data;
+                    document.getElementById("FullName").value = data.FullName;
+                    document.getElementById("Class").value = data.Class;
+                    document.getElementById("BirthDate").value = data.BirthDate;
+                    document.getElementById("Address").value = data.Address;
+                    document.getElementById("EnrollDate").value = data.EnrollDate;
+                    
+                    document.getElementById("RollNo").disabled = true;
+                    document.getElementById("btnUpdate").disabled = false;
+                } else {
+                    // New record: Enable SAVE
+                    document.getElementById("btnSave").disabled = false;
+                }
+                document.getElementById("FullName").focus();
+            });
+        }
+
+        // STEP 3: Save or Update Data
+        function sendData() {
+            const data = {
+                RollNo: document.getElementById("RollNo").value,
+                FullName: document.getElementById("FullName").value,
+                Class: document.getElementById("Class").value,
+                BirthDate: document.getElementById("BirthDate").value,
+                Address: document.getElementById("Address").value,
+                EnrollDate: document.getElementById("EnrollDate").value
+            };
+
+            // Validation: No empty fields
+            if (Object.values(data).some(x => x === "")) {
+                alert("Please fill all fields!");
+                return;
+            }
+
+            fetch('/submit', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(() => {
+                alert("Data Processed Successfully!");
+                resetForm();
+            });
+        }
+    </script>
+</body>
+</html>
