@@ -1,120 +1,142 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Student Enrollment</title>
+    <meta charset="UTF-8">
+    <title>Student Enrollment Form</title>
     <style>
-        body { font-family: sans-serif; margin: 40px; line-height: 1.6; }
-        .form-group { margin-bottom: 15px; }
-        label { display: inline-block; width: 120px; }
-        input, textarea { padding: 5px; width: 250px; }
+        body { font-family: sans-serif; margin: 40px; }
+        .form-group { margin-bottom: 15px; display: flex; align-items: center; }
+        label { width: 120px; font-weight: bold; }
+        input, textarea { padding: 8px; width: 300px; border: 1px solid #ccc; }
+        input:disabled, textarea:disabled { background-color: #f0f0f0; cursor: not-allowed; }
         .buttons { margin-top: 20px; }
+        button { padding: 10px 20px; margin-right: 10px; cursor: pointer; }
+        button:disabled { cursor: not-allowed; opacity: 0.5; }
     </style>
 </head>
 <body onload="resetForm()">
 
     <h2>Student Enrollment Form</h2>
-    <form id="studentForm">
-        <div class="form-group">
-            <label>Roll No:</label>
-            <input type="number" id="RollNo" onblur="checkRollNo()">
-        </div>
-        <div class="form-group">
-            <label>Full Name:</label>
-            <input type="text" id="FullName" disabled>
-        </div>
-        <div class="form-group">
-            <label>Class:</label>
-            <input type="text" id="Class" disabled>
-        </div>
-        <div class="form-group">
-            <label>Birth Date:</label>
-            <input type="date" id="BirthDate" disabled>
-        </div>
-        <div class="form-group">
-            <label>Address:</label>
-            <textarea id="Address" disabled></textarea>
-        </div>
-        <div class="form-group">
-            <label>Enroll Date:</label>
-            <input type="date" id="EnrollDate" disabled>
-        </div>
 
-        <div class="buttons">
-            <button type="button" id="btnSave" onclick="sendData()" disabled>Save</button>
-            <button type="button" id="btnUpdate" onclick="sendData()" disabled>Update</button>
-            <button type="button" id="btnReset" onclick="resetForm()">Reset</button>
-        </div>
-    </form>
+    <div class="form-group">
+        <label>Roll No:</label>
+        <input type="text" id="Roll-No" onchange="checkRollNo()">
+    </div>
+    <div class="form-group">
+        <label>Full Name:</label>
+        <input type="text" id="Full-Name" disabled>
+    </div>
+    <div class="form-group">
+        <label>Class:</label>
+        <input type="text" id="Class" disabled>
+    </div>
+    <div class="form-group">
+        <label>Birth Date:</label>
+        <input type="date" id="Birth-Date" disabled>
+    </div>
+    <div class="form-group">
+        <label>Address:</label>
+        <textarea id="Address" rows="3" disabled></textarea>
+    </div>
+    <div class="form-group">
+        <label>Enroll Date:</label>
+        <input type="date" id="Enrollment-Date" disabled>
+    </div>
+
+    <div class="buttons">
+        <button id="saveBtn" onclick="saveData()" disabled>Save</button>
+        <button id="updateBtn" onclick="updateData()" disabled>Update</button>
+        <button id="resetBtn" onclick="resetForm()">Reset</button>
+    </div>
 
     <script>
-        // STEP 1: On Page Load / Reset
         function resetForm() {
-            document.getElementById("studentForm").reset();
-            const fields = ["FullName", "Class", "BirthDate", "Address", "EnrollDate"];
-            fields.forEach(f => document.getElementById(f).disabled = true);
+            // Clear all fields
+            document.querySelectorAll('input, textarea').forEach(el => el.value = "");
             
-            document.getElementById("RollNo").disabled = false;
-            document.getElementById("btnSave").disabled = true;
-            document.getElementById("btnUpdate").disabled = true;
-            document.getElementById("RollNo").focus();
+            // Disable everything except Roll No
+            document.getElementById("Roll-No").disabled = false;
+            document.getElementById("Full-Name").disabled = true;
+            document.getElementById("Class").disabled = true;
+            document.getElementById("Birth-Date").disabled = true;
+            document.getElementById("Address").disabled = true;
+            document.getElementById("Enrollment-Date").disabled = true;
+            
+            // Buttons
+            document.getElementById("saveBtn").disabled = true;
+            document.getElementById("updateBtn").disabled = true;
+            
+            // Focus on Roll No
+            document.getElementById("Roll-No").focus();
         }
 
-        // STEP 2: Check if Roll No exists in Database
         function checkRollNo() {
-            let rollNo = document.getElementById("RollNo").value;
+            let rollNo = document.getElementById("Roll-No").value;
             if (!rollNo) return;
 
-            fetch('/check/' + rollNo)
+            fetch('/check-roll', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({roll_no: rollNo})
+            })
             .then(res => res.json())
-            .then(response => {
-                const fields = ["FullName", "Class", "BirthDate", "Address", "EnrollDate"];
-                fields.forEach(f => document.getElementById(f).disabled = false);
+            .then(data => {
+                // Enable other fields
+                document.getElementById("Full-Name").disabled = false;
+                document.getElementById("Class").disabled = false;
+                document.getElementById("Birth-Date").disabled = false;
+                document.getElementById("Address").disabled = false;
+                document.getElementById("Enrollment-Date").disabled = false;
+                document.getElementById("Full-Name").focus();
 
-                if (response.exists) {
-                    // Record exists: Fill data and enable UPDATE
-                    const data = response.data;
-                    document.getElementById("FullName").value = data.FullName;
-                    document.getElementById("Class").value = data.Class;
-                    document.getElementById("BirthDate").value = data.BirthDate;
-                    document.getElementById("Address").value = data.Address;
-                    document.getElementById("EnrollDate").value = data.EnrollDate;
+                if (data.exists) {
+                    // Record found: Fill form and enable Update
+                    document.getElementById("Full-Name").value = data.data["Full-Name"];
+                    document.getElementById("Class").value = data.data["Class"];
+                    document.getElementById("Birth-Date").value = data.data["Birth-Date"];
+                    document.getElementById("Address").value = data.data["Address"];
+                    document.getElementById("Enrollment-Date").value = data.data["Enrollment-Date"];
                     
-                    document.getElementById("RollNo").disabled = true;
-                    document.getElementById("btnUpdate").disabled = false;
+                    document.getElementById("Roll-No").disabled = true;
+                    document.getElementById("updateBtn").disabled = false;
+                    document.getElementById("saveBtn").disabled = true;
                 } else {
-                    // New record: Enable SAVE
-                    document.getElementById("btnSave").disabled = false;
+                    // New record: Enable Save
+                    document.getElementById("saveBtn").disabled = false;
+                    document.getElementById("updateBtn").disabled = true;
                 }
-                document.getElementById("FullName").focus();
             });
         }
 
-        // STEP 3: Save or Update Data
-        function sendData() {
-            const data = {
-                RollNo: document.getElementById("RollNo").value,
-                FullName: document.getElementById("FullName").value,
-                Class: document.getElementById("Class").value,
-                BirthDate: document.getElementById("BirthDate").value,
-                Address: document.getElementById("Address").value,
-                EnrollDate: document.getElementById("EnrollDate").value
+        function getFormData() {
+            return {
+                "Roll-No": document.getElementById("Roll-No").value,
+                "Full-Name": document.getElementById("Full-Name").value,
+                "Class": document.getElementById("Class").value,
+                "Birth-Date": document.getElementById("Birth-Date").value,
+                "Address": document.getElementById("Address").value,
+                "Enrollment-Date": document.getElementById("Enrollment-Date").value
             };
+        }
 
-            // Validation: No empty fields
-            if (Object.values(data).some(x => x === "")) {
-                alert("Please fill all fields!");
-                return;
-            }
+        function saveData() {
+            let data = getFormData();
+            if (Object.values(data).some(v => v === "")) return alert("All fields required!");
 
-            fetch('/submit', {
+            fetch('/save-student', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify(data)
-            })
-            .then(() => {
-                alert("Data Processed Successfully!");
-                resetForm();
-            });
+            }).then(() => resetForm());
+        }
+
+        function updateData() {
+            let data = getFormData();
+            fetch('/update-student', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            }).then(() => resetForm());
         }
     </script>
 </body>
